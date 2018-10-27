@@ -39,10 +39,10 @@ class TelegramChannel
             $message = [$message];
 
         foreach ($message as $msg)
-            $this->sendMessage($msg);
+            $this->sendTelegramObject($msg);
     }
 
-    private function sendMessage($message)
+    private function sendTelegramObject($message)
     {
         if (is_string($message)) {
             $message = TelegramMessage::create($message);
@@ -56,27 +56,52 @@ class TelegramChannel
             $message->to($to);
         }
 
+        switch (get_class($message)) {
+            case TelegramMessage::class:
+                $this->sendMessage($message);
+
+                break;
+
+            case TelegramLocation::class:
+                $this->sendLocation($message);
+
+                break;
+
+            case TelegramFile::class:
+                $this->sendFile($message);
+
+                break;
+        }
+    }
+
+    private function sendMessage(TelegramMessage $message)
+    {
         if(isset($message->payload['text']) && $message->payload['text'])
         {
             $params = $message->toArray();
             $this->telegram->sendMessage($params);
         }
-        elseif (isset($message->payload['latitude']) && isset($message->payload['longitude'])) {
+    }
+
+    private function sendLocation(TelegramLocation $message)
+    {
+        if (isset($message->payload['latitude']) && isset($message->payload['longitude'])) {
             $params = $message->toArray();
             $this->telegram->sendLocation($params);
         }
+    }
+
+    private function sendFile(TelegramFile $message)
+    {
+        if(isset($message->payload['file']))
+        {
+            $params = $message->toMultipart();
+            $this->telegram->sendFile($params, $message->type, true);
+        }
         else
         {
-            if(isset($message->payload['file']))
-            {
-                $params = $message->toMultipart();
-                $this->telegram->sendFile($params, $message->type, true);
-            }
-            else
-            {
-                $params = $message->toArray();
-                $this->telegram->sendFile($params, $message->type);
-            }
+            $params = $message->toArray();
+            $this->telegram->sendFile($params, $message->type);
         }
     }
 }
