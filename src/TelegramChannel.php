@@ -12,6 +12,8 @@ class TelegramChannel
      */
     protected $telegram;
 
+    private $notifiable;
+
     /**
      * Channel constructor.
      *
@@ -30,14 +32,24 @@ class TelegramChannel
      */
     public function send($notifiable, Notification $notification)
     {
+        $this->notifiable = $notifiable;
         $message = $notification->toTelegram($notifiable);
 
+        if (!is_array($message))
+            $message = [$message];
+
+        foreach ($message as $msg)
+            $this->sendMessage($msg);
+    }
+
+    private function sendMessage($message)
+    {
         if (is_string($message)) {
             $message = TelegramMessage::create($message);
         }
 
         if ($message->toNotGiven()) {
-            if (!$to = $notifiable->routeNotificationFor('telegram')) {
+            if (!$to = $this->notifiable->routeNotificationFor('telegram')) {
                 throw CouldNotSendNotification::chatIdNotProvided();
             }
 
